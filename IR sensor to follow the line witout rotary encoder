@@ -1,0 +1,90 @@
+#include <LiquidCrystal.h>
+
+LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
+
+const int IN1 = 2; 
+const int IN2 = A1; 
+const int ENA = 3;   
+const int IN3 = A2; 
+const int IN4 = A3; 
+const int ENB = 11; 
+const int irSensorPinLeft = 13;
+const int irSensorPinRight = 12;
+unsigned long previousMillis = 0;
+const unsigned long interval = 10;
+int motorSpeed = 0;
+
+void setup() {
+  lcd.begin(16, 2);
+  lcd.print("Max Speed...");
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(ENA, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
+  pinMode(ENB, OUTPUT);
+  pinMode(irSensorPinLeft, INPUT);
+  pinMode(irSensorPinRight, INPUT);
+  Serial.begin(230400);
+  Serial.println("System Initialized");
+  analogWrite(ENA, motorSpeed);
+  analogWrite(ENB, motorSpeed);
+}
+
+void loop() {
+  unsigned long currentMillis = millis();
+  int isLeftDetected = digitalRead(irSensorPinLeft);
+  int isRightDetected = digitalRead(irSensorPinRight);
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;
+    if (!isLeftDetected && !isRightDetected) {
+      motorSpeed = 0; 
+      analogWrite(ENA, motorSpeed);
+      analogWrite(ENB, motorSpeed);
+      digitalWrite(IN1, LOW);
+      digitalWrite(IN2, LOW);
+      digitalWrite(IN3, LOW);
+      digitalWrite(IN4, LOW);
+      Serial.println("No sensors detected the line, motors stopped");
+      lcd.setCursor(0, 1);
+      lcd.print("Speed: 0          ");
+      return;
+    }
+    if (isLeftDetected) {
+      motorSpeed = 255; 
+      analogWrite(ENA, motorSpeed);
+      digitalWrite(IN1, HIGH);
+      digitalWrite(IN2, LOW);
+      Serial.println("Left sensor detected the line, moving forward");
+    } else {
+      motorSpeed = 255;
+      analogWrite(ENA, motorSpeed);
+      digitalWrite(IN1, LOW);
+      digitalWrite(IN2, HIGH);
+      Serial.println("Left sensor lost the line, reversing");
+    }
+    if (isRightDetected) {
+      motorSpeed = 80;
+      analogWrite(ENB, motorSpeed);
+      digitalWrite(IN3, HIGH);
+      digitalWrite(IN4, LOW);
+      Serial.println("Right sensor detected the line, moving forward");
+    } else {
+      motorSpeed = 255; 
+      analogWrite(ENB, motorSpeed);
+      digitalWrite(IN3, LOW);
+      digitalWrite(IN4, HIGH);
+      Serial.println("Right sensor lost the line, reversing");
+    }
+    lcd.setCursor(0, 1);
+    lcd.print("Speed: ");
+    lcd.print(motorSpeed);
+    if (isLeftDetected && isRightDetected) {
+      Serial.println("Both sensors detected the line");
+    } else if (isLeftDetected) {
+      Serial.println("Only left sensor detected the line");
+    } else if (isRightDetected) {
+      Serial.println("Only right sensor detected the line");
+    }
+  }
+}
