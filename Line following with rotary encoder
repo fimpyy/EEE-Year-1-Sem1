@@ -1,0 +1,135 @@
+#include <LiquidCrystal.h>
+#define CLK_A4 A4
+#define CLK_A5 A5
+
+LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
+
+const int IN1 = 2; 
+const int IN2 = A1; 
+const int ENA = 3;   
+const int IN3 = A2; 
+const int IN4 = A3; 
+const int ENB = 11; 
+const int irSensorPinLeft = 13;
+const int irSensorPinRight = 12;
+unsigned long previousMillis = 0;
+const unsigned long interval = 10;
+int motorSpeed = 0;
+volatile int counter_A4 = 0; 
+volatile int counter_A5 = 0; 
+int lastStateCLK_A4;
+int lastStateCLK_A5;
+unsigned long lastTime = 0;
+volatile int lastCounter_A4 = 0;
+volatile int lastCounter_A5 = 0;
+float speed_A4 = 0.0;
+float speed_A5 = 0.0;
+float pulsesPerRevolution = 20.0;
+float wheelCircumference = 19.78;
+float distance_A4 = 0.0;     
+float distance_A5 = 0.0; 
+float timeInterval = 100.0; 
+float avgDistance; 
+
+void setup() {
+  lcd.begin(16, 2);
+  lcd.print("3");
+  delay(1000);
+  lcd.clear();
+  lcd.print("2");
+  delay(1000);
+  lcd.clear();
+  lcd.print("1");
+  delay(1000);
+  lcd.clear();
+  pinMode(CLK_A4, INPUT);
+  pinMode(CLK_A5, INPUT);
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(ENA, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
+  pinMode(ENB, OUTPUT);
+  pinMode(irSensorPinLeft, INPUT);
+  pinMode(irSensorPinRight, INPUT);
+  Serial.begin(115200);
+  Serial.println("Go!");
+  analogWrite(ENA, motorSpeed);
+  analogWrite(ENB, motorSpeed);
+  lastStateCLK_A4 = digitalRead(CLK_A4);
+  lastStateCLK_A5 = digitalRead(CLK_A5);
+}
+
+void loop() {
+  unsigned long currentMillis = millis();
+  int isLeftDetected = digitalRead(irSensorPinLeft);
+  int isRightDetected = digitalRead(irSensorPinRight);
+  display();
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;
+    if (!isLeftDetected && !isRightDetected) {
+      motorSpeed = 0; 
+      analogWrite(ENA, motorSpeed);
+      analogWrite(ENB, motorSpeed);
+      digitalWrite(IN1, LOW);
+      digitalWrite(IN2, LOW);
+      digitalWrite(IN3, LOW);
+      digitalWrite(IN4, LOW);
+      return;
+    }
+    if (isLeftDetected) {
+      motorSpeed = 80; 
+      analogWrite(ENA, motorSpeed);
+      digitalWrite(IN1, HIGH);
+      digitalWrite(IN2, LOW);
+    } else {
+      motorSpeed = 255;
+      analogWrite(ENA, motorSpeed);
+      digitalWrite(IN1, LOW);
+      digitalWrite(IN2, HIGH);
+    }
+    if (isRightDetected) {
+      motorSpeed = 80;
+      analogWrite(ENB, motorSpeed);
+      digitalWrite(IN3, HIGH);
+      digitalWrite(IN4, LOW);
+    } else {
+      motorSpeed = 255; 
+      analogWrite(ENB, motorSpeed);
+      digitalWrite(IN3, LOW);
+      digitalWrite(IN4, HIGH);
+    }
+    }
+  }
+
+void display() {
+  unsigned long currentTime = millis();
+  int currentStateCLK_A4 = digitalRead(CLK_A4);
+  if (currentStateCLK_A4 != lastStateCLK_A4 && currentStateCLK_A4 == 1) {
+    counter_A4++;
+  }
+  lastStateCLK_A4 = currentStateCLK_A4;
+  int currentStateCLK_A5 = digitalRead(CLK_A5);
+  if (currentStateCLK_A5 != lastStateCLK_A5 && currentStateCLK_A5 == 1) {
+    counter_A5++; 
+  }
+  lastStateCLK_A5 = currentStateCLK_A5;
+  if (currentTime - lastTime >= timeInterval) {
+    int countDifference_A4 = counter_A4 - lastCounter_A4;
+    speed_A4 = abs(countDifference_A4 / timeInterval) * 1000.0;
+    float rpm_A4 = (speed_A4 / pulsesPerRevolution) * 60.0;
+    distance_A4 += ((countDifference_A4 / pulsesPerRevolution) * wheelCircumference)/100;
+    int countDifference_A5 = counter_A5 - lastCounter_A5;
+    speed_A5 = abs(countDifference_A5 / timeInterval) * 1000.0;
+    float rpm_A5 = (speed_A5 / pulsesPerRevolution) * 60.0;
+    distance_A5 += ((countDifference_A5 / pulsesPerRevolution) * wheelCircumference)/100;
+    lcd.setCursor(0, 0);
+    lcd.print("Distance: ");
+    avgDistance = (distance_A4 + distance_A5)/2;
+    lcd.print(avgDistance, 2);
+    lcd.print(" m");
+    lastCounter_A4 = counter_A4;
+    lastCounter_A5 = counter_A5;
+    lastTime = currentTime;
+  }
+}
