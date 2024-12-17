@@ -1,6 +1,6 @@
 #include <LiquidCrystal.h>
 #include <Wire.h>
-
+jhbjhhhjh
 #define CLK_Encoder1 A4
 #define CLK_Encoder2 A5
 
